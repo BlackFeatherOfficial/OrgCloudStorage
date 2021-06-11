@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" >
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>企业共享分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+  <script th:src="@{/../static/Mtils.min.js}"></script>
+  <script th:src="@{/../static/layui.js}"></script>
+  <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+
+</head>
+<script>
+
+  function getQueryVariable(variable)
+  {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+    return false;
+  }
+
+
+  function shareInit(){
+
+    if(sessionStorage.getItem("OrgLayer") == null)
+      document.getElementById("needChoose").style.display="";
+
+    $.ajax({
+      url:"/queryUserClass",
+      async:false,
+      success:function (data,status){
+        //成员加入或建立了组织
+        if(data != 0)
+        {
+          //查询组织树
+          $.ajax({
+            async:false,
+            url:"QueryOrgTree",
+            success:function (data,status){
+
+              layui.use('tree', function(){
+                var tree = layui.tree;
+                sessionStorage.setItem("OrgChoose","null")
+                //渲染
+                tree.render({
+                  click:function(obj){
+                    //节点高亮
+                    var nodes = document.getElementsByClassName("layui-tree-txt");
+                    for(var i=0;i<nodes.length;i++){
+                      if(nodes[i].innerHTML === obj.data.title){
+                        sessionStorage.setItem("OrgLayer",nodes[i].textContent.match(/{(\S*)-/)[1])
+                        sessionStorage.setItem("OrgOrder",nodes[i].textContent.match(/-(\S*)}/)[1])
+                        console.log(sessionStorage.getItem("OrgLayer"));
+                        console.log(sessionStorage.getItem("OrgOrder"));
+                        window.location.href="share?userName="+getQueryVariable("userName")+"&belongLayer=0&belongOrder=0";
+                      }
+                    }
+                  }
+                  ,elem: '#OrgTree'  //绑定元素
+                  ,accordion:true
+                  ,data:eval('(' + data + ')'),
+                });
+              });
+            }
+          })
+
+          document.getElementById("share").style.display="";
+          //启动导航栏功能
+          var str='';
+          for(var i=0; i<parseInt(getQueryVariable("belongLayer"));i++){
+
+            str += "<a  href='share?userName="+getQueryVariable("userName")+"&belongLayer="+sessionStorage.getItem("pathLayer"+i.toString())+"&belongOrder="+sessionStorage.getItem("pathOrder"+i.toString())+"'>"+sessionStorage.getItem("fileName"+i.toString())+"</a>"; //拼接str
+            if ( i != (parseInt(getQueryVariable("belongLayer"))-1)){
+              str += "<span>=></span>";
+            }
+            else {
+              str +="<span>&nbsp&nbsp&nbsp&nbspI:P</span>";
+            }
+
+          }
+          document.getElementById('navigationBar').innerHTML=document.getElementById('navigationBar').innerHTML+str;
+          document.getElementById("homeLink").setAttribute("href","/share?userName="+getQueryVariable("userName")+"&belongLayer=0&belongOrder=0");
+
+          //如果访问根目录则取消返回上一级导航
+          if (("0"==getQueryVariable("belongLayer")&"0"==getQueryVariable("belongOrder")))
+            document.getElementById("backLink").style.display="none";
+          //
+          if (sessionStorage.getItem("OrgLayer") !=null && sessionStorage.getItem("OrgOrder")!=null)
+          $.ajax({
+            url: "/OrgList_json",
+            data: {
+              OrgLayer:sessionStorage.getItem("OrgLayer"),
+              OrgOrder:sessionStorage.getItem("OrgOrder"),
+              belongLayer: getQueryVariable("belongLayer"),
+              belongOrder: getQueryVariable("belongOrder"),},
+            success: function (data,status){
+              if(data.count==0){
+
+                document.getElementById("noFile").style.display = "";
+                document.getElementById("haveFile").style.display = "none";
+              }
+              else {
+
+                document.getElementById("haveFile").style.display = "";
+                document.getElementById("noFile").style.display = "none";
+              }
+            }
+          })
+
+        }
+
+        else {
+          document.getElementById("joinOrCreat").style.display="";
+        }
+      }
+    })
+  }
+  function goBack(){
+    window.history.back();
+  }
+  function creatOrg(){
+
+    layer.open({
+      title:"确认建立",
+      content: "<span>您将以最高管理身份建立一个企业组织,点击确定完成创建</span>",
+      area: ['300px', '200px'],
+      type: 0,
+      btn: ['确定','取消'],
+
+      yes: function (index, layero) {
+        $.ajax({
+          url:"creatOrg",
+          success:function (data,status){
+            parent.document.getElementById("queryUserClass").style.display="";
+            layer.close(index);
+            layer.open({
+              title:"建立成功",
+              content: "<span>您已经建立企业组织，企业ID将继承您的ID，您可以在企业共享页面管理您的企业和企业文件</span>",
+              area: ['300px', '200px'],
+              type: 0,
+              btn: ['确定'],
+              yes:function (index2, layero){
+                layer.close(index2);
+                window.location.reload();
+              }
+            })
+          }
+        })
+      },
+    })
+  }
+
+  if (sessionStorage.getItem("OrgLayer")!=null && sessionStorage.getItem("OrgOrder") != null)
+  layui.use('table', function() {
+    let table = layui.table;
+    //加载table实例
+    table.render({
+      elem: "#OrgFileTable",//绑定ID属性
+      width:window.innerWidth*0.84,
+      url: "/OrgList_json?OrgLayer="+sessionStorage.getItem("OrgLayer")+
+              "&OrgOrder="+sessionStorage.getItem("OrgOrder")+"&belongLayer="+getQueryVariable("belongLayer")+"&belongOrder="+getQueryVariable("belongOrder"), //不要写成url， data的格式，会报错！
+      cols: [
+        [
+          {field: 'checkbox', type: 'checkbox'},
+          {field: 'remark', title: '文件名', sort: true},
+          {field: 'fileType', title: '文件类型', sort: true},
+          {field: 'sizeOfKB', title: '文件大小', sort: true},
+        ]
+      ],
+      page: true,
+      toolbar: '#headToolBar',
+    })
+  })
+
+</script>
+
+<body onload="shareInit()" >
+<div id="joinOrCreat" style="position:absolute; width:100%;height:100%;align-content: center;display: none">
+  <fieldset class="layui-elem-field layui-field-title" style="margin-top: 50px;">
+    <legend>您还没有加入企业，请选择...</legend>
+  </fieldset>
+<div style="position:absolute; height: 100%;width: 50%;background-color: #c3f1ea">
+  <button style="margin-top: 35%;margin-left: 35%" type="button" class="layui-btn layui-btn-primary layui-btn-lg" id="creatOrg" onclick="creatOrg()">建立企业组织</button>
+</div>
+
+  <div style="position:absolute;height: 100%; left: 50% ;width: 50%;  background-color: #ffb4b4">
+    <input style=" margin-top: 30%;margin-left: 25%;width: 60%" type="input" name="orgID" id="orgID" placeholder="如果您要加入，请输入企业ID并点击加入组织" autocomplete="off" class="layui-input" >
+    <button style="margin-top: 5%;margin-left: 38%" type="button" class="layui-btn layui-btn-primary layui-btn-lg" id="joinOrg" onclick="JoinOrg()">加入企业组织</button>
+  </div>
+</div>
+<!--加入企业后显示如下页面-->
+<div id="share" style="position:absolute ;width: 100%;height: 100%;display: none" >
+  <!--顶部路径导航菜单-->
+  <div id="pathNavigation" style=" height: auto ;width: 99%; background: #ffffff">
+    <span id="navigationBar" class="layui-breadcrumb"> <a id="homeLink" href= "">主页</a> <a id="backLink" onclick="goBack();">返回上一级&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp</a> </span>
+  </div>
+<!--下部显示-->
+  <div style="position:absolute;width: 100%;height: 97%">
+    <!--  左侧企业树-->
+    <div id="OrgTreeArea" style="float:left;width: auto;height: 100%; ">
+      <br>
+      <i>部门分组列表</i>
+      <hr>
+      <div id="OrgTree"></div>
+    </div>
+    <!--文件显示区域-->
+    <div style="background-color: #ffffff;width:85%;height: 100%;position:absolute;left: 15%;">
+      <!--无文件时，显示以下界面-->
+
+      <div th:id="noFile" style="position: absolute;height: 100%;width: 100%;display: none">
+        <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 25%">
+          <hr>
+          <i style="position: absolute;left: 28%;font-size: 30px ;" class="layui-icon"> &#xe60c;暂时还没有人向该分组分享文件哦&#xe60c;</i>
+        </div>
+      </div >
+      <div th:id="needChoose" style="position: absolute;height: 100%;width: 100%;z-index: 0 ;display: none" >
+        <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 25%">
+          <hr>
+          <i style="position: absolute;left: 28%;font-size: 30px ;" class="layui-icon"> &#xe60c;请选择左侧企业分组&#xe60c;</i>
+        </div>
+      </div >
+      <!--有文件时，显示以下界面-->
+      <div  th:id="haveFile" style="position: absolute;height: 100%;width: 100%;display:none;">
+        <table id="OrgFileTable" lay-filter="OrgMainTable">
+        </table>
+        <table id="OrgFileTable2" lay-filter="OrgMainTable2">
+        </table>
+     </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+<script type="text/html" id="headToolBar">
+  <div class="demoTable">
+    搜索ID：
+    <div class="layui-inline">
+      <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+    </div>
+    <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+  </div>
+</script>
+
+<script>
+  //设置导航参数
+  function addPath(fileName,pathLayer,pathOrder){
+
+    sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+    sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+    sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+  }
+
+function JoinOrg(){
+    let OrgID =document.getElementById("orgID").value;
+  let msgID =Mtils.security.hex_md5((new Date()).valueOf()+document.getElementById("orgID").value);
+  $.ajax({
+    url:"sql",
+    data:{
+      id:OrgID,
+    },
+    success:function (data,status){
+      //企业存在
+      let username = data.netName;
+      if (username == null)
+        username = data.userName
+    if (data!=null && data.belonging != null) {
+
+      $.ajax({
+        url:"sendOrgApplication",
+        data:{
+          receiver:OrgID,
+          msgID:msgID,
+        }
+      })
+      if (data.email !=null) {
+        $.ajax({
+          url: "sendImageBY",
+          data: {
+            receiver: data.email,
+            subject: "白羽Official通知",
+            context: "尊敬的用户" + username + "您好,您在我司下属软件：鲸羽™企业云盘 收到了用户（" + getQueryVariable("userName") + ")的加入申请，您可以点击<a href='http://localhost:8080/application?ID='" + msgID + ">这里</a>来确认该邀请。" +
+                    "非局域网用户请点击<a href='http://h2b6305400.qicp.vip/application?ID='" + msgID + ">这里</a>在公网确认该邀请"
+          },
+          success: function (data_mail, status_mail) {
+            if (data_mail == "success")
+              layer.msg('已发出云盘私信和邮件通知，等待对方确认', {icon: 1, time: 2000});
+          }
+        })
+      }
+    else {
+        layer.msg('对方无email，已发出云盘私信，等待对方确认', {icon: 1, time: 2000});
+      }
+    }
+    //企业不存在
+    else {
+      layer.msg('该企业不存在',{icon:2,time:2000});
+    }
+    }
+  })
+}
+
+</script>
+
+
+<script>
+
+</script>
+</body>
+</html>

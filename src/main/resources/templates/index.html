@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8" >
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>layout 管理系统大布局 - Layui</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+</head>
+<script>
+    function indexInit(){
+        $.ajax({
+            url:"queryUserClass",
+            success:function (data,status){
+                if (data <=1){
+                    document.getElementById("OrgManager").style.display="none";
+                }
+            }
+        })
+    }
+
+</script>
+
+<body onload="indexInit()">
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo">
+            <img src="/static/images/logo.png" style=" position:absolute;left:8px;top: 14px; width: 30px;height: 30px">
+            <span style="position:absolute;left: 50px; font-family: 楷体;font-weight: 10;font-size: 20px">鲸羽企业云盘</span>
+        </div>
+
+        <!-- 头部区域（可配合layui 已有的水平导航） -->
+        <ul class="layui-nav layui-layout-right">
+
+
+
+            <li class="layui-nav-item">
+
+
+                <a href="javascript:;">
+                    <img src="//tva1.sinaimg.cn/crop.0.0.118.118.180/5db11ff4gw1e77d3nqrv8j203b03cweg.jpg" class="layui-nav-img">
+                    <span th:id="userNameQuery" th:value="${session.loginUser.userName}" th:text="${session.loginUser.userName}">用户名</span>
+                    <span style="display: none" th:id="userIDQuery" th:value="${session.loginUser.ID}" th:text="${session.loginUser.ID}"></span>
+                    <span style="display: none" th:id="userBelongingQuery" th:value="${session.loginUser.belonging}" th:text="${session.loginUser.belonging}"></span>
+                </a>
+                <dl class="layui-nav-child">
+                    <dd><a href="">个人信息设置</a></dd>
+                    <dd onclick="gotoMsg();"><a><i class="layui-icon" >&#xe618;  信箱</i></a></dd>
+
+                </dl>
+            </li>
+            <li class="layui-nav-item"><a onclick="sessionStorage.clear()" href="/exit"><i class="layui-icon" style="font-size: 18px;color: #eea63f;">&#x1006</i> 退出</a></li>
+        </ul>
+    </div>
+
+
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree"  lay-filter="test">
+                <li class="layui-nav-item layui-nav-itemed">
+                        <li th:class="layui-nav-item" onclick="gotoSurvey();"><a href="#">网盘概况</a></li>
+                        <li th:class="layui-nav-item" ><a onclick="gotoAllFile();" href="#">全部文件</a>
+                            <dl th:class="layui-nav-child">
+                                <dd onclick="gotoText();"><a href="#">文档</a></dd>
+                                <dd onclick="gotoImage();"><a href="#">照片</a></dd>
+                                <dd onclick="gotoMusic();"><a href="#">音频</a></dd>
+                                <dd onclick="gotoVideo();"><a href="#">视频</a></dd>
+                                <dd onclick="gotoUnknown();"><a href="#">未知文件</a></dd>
+                            </dl>
+                        </li>
+                        <li th:class="layui-nav-item" onclick="gotoShare();"><a href="#">企业共享<span th:class="layui-badge">6</span></a></li>
+                        <li th:class="layui-nav-item" id="OrgManager" onclick="gotoOrgManager()"><a href="#">企业组织管理</a></li>
+
+                        <li th:class="layui-nav-item" onclick="gotoFriend();"><a href="#">我的好友</a></li>
+                        <li th:class="layui-nav-item" onclick="gotoLink();"><a href="#">我的分享</a></li>
+                        <li th:class="layui-nav-item" onclick="gotoRecycle();"><a href="#">回收站</a></li>
+                    </ul>
+        </div>
+
+<!--       <div style="position: absolute;bottom: 0;width: 100%;height: 200px;background: #FFFF00"></div>-->
+    </div>
+
+    
+
+
+    <div class="layui-body">
+        <!-- 内容主体区域 -->
+        <iframe style="width: 99.9%;height: 100%;" th:id="changeFunction" th:src="Overview"></iframe>
+
+
+<!--        <div style="position: absolute;right: 0px;height: 100%;width: 15%;background: #2E2D3C">-->
+<!--            &lt;!&ndash; 好友导航区域 &ndash;&gt;-->
+<!--            <div >-->
+<!--            </div>-->
+<!--        </div>-->
+
+    </div>
+
+    <div class="layui-footer">
+        <div id="musicPlayer" style="display: none">
+            <button class="layui-btn" id="rePlay" onclick="rePlay()"><i class="layui-icon">&#xe9aa;重新播放</i></button>
+            <button class="layui-btn" id="loopPlay" onclick="loopPlay()"><i class="layui-icon">&#xe674;循环播放</i></button>
+            <button class="layui-btn" id="closeLoopPlay" onclick="closeLoopPlay()" style="display: none"><i class="layui-icon">&#xe674;关闭循环播放</i></button>
+            <button class="layui-btn" id="pausePlay" onclick="pausePlay()"><i class="layui-icon">&#xe651;暂停播放</i></button>
+            <button class="layui-btn" id="startPlay" onclick="startPlay()" style="display: none"><i class="layui-icon">&#xe652;开始播放</i></button>
+            <audio autoplay id="Music"></audio>
+            <span id="MusicInfo">正在播放...</span>
+            <button style="float: right" class="layui-btn" id="closePlay" onclick="closePlay()"><i class="layui-icon">&#xe652;关闭播放器</i></button>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+<script>
+    function closePlay(){
+        $("#Music").trigger('pause');
+        document.getElementById("musicPlayer").style.display="none";
+    }
+
+    function rePlay(){
+        document.getElementById("startPlay").style.display="none";
+        document.getElementById("pausePlay").style.display="";
+        document.getElementById('Music').currentTime = 0;
+    }
+    function loopPlay(){
+        document.getElementById("loopPlay").style.display="none";
+        document.getElementById("closeLoopPlay").style.display="";
+        document.getElementById("Music").loop = true;
+    }
+    function closeLoopPlay(){
+        document.getElementById("loopPlay").style.display="";
+        document.getElementById("closeLoopPlay").style.display="none";
+        document.getElementById("Music").loop = false;
+    }
+
+    function pausePlay(){
+        document.getElementById("startPlay").style.display="";
+        document.getElementById("pausePlay").style.display="none";
+        $("#Music").trigger('pause');
+    }
+    function startPlay(){
+        document.getElementById("startPlay").style.display="none";
+        document.getElementById("pausePlay").style.display="";
+        $("#Music").trigger('play');
+    }
+    function gotoMsg(){
+        $("#changeFunction").attr("src","Msg")
+    }
+    function gotoSurvey(){
+        $("#changeFunction").attr("src","Overview")
+    }
+    function gotoFriend() {
+        $("#changeFunction").attr("src","friend");
+    }
+    function gotoAllFile(){
+        $("#changeFunction").attr("src","files?userName="+document.getElementById("userNameQuery").innerText+"&belongLayer=0&belongOrder=0");
+    }
+    function gotoShare(){
+        $("#changeFunction").attr("src","share?userName="+document.getElementById("userNameQuery").innerText+"&belongLayer=0&belongOrder=0");
+    }
+    function gotoLink(){
+        $("#changeFunction").attr("src","myLink");
+    }
+    function gotoRecycle(){
+        $("#changeFunction").attr("src","recycle");
+    }
+    function gotoText(){
+        $("#changeFunction").attr("src","text?belongLayer=0&belongOrder=0");
+    }
+    function gotoMusic(){
+        $("#changeFunction").attr("src","music?belongLayer=0&belongOrder=0");
+    }
+    function gotoImage(){
+        $("#changeFunction").attr("src","image?belongLayer=0&belongOrder=0");
+    }
+    function gotoVideo(){
+        $("#changeFunction").attr("src","video?belongLayer=0&belongOrder=0");
+    }
+    function gotoUnknown(){
+        $("#changeFunction").attr("src","unknown?belongLayer=0&belongOrder=0");
+    }
+    function gotoOrgManager(){
+        $("#changeFunction").attr("src","OrgManager?belongLayer=0&belongOrder=0");
+    }
+</script>
+<script th:src="@{/../static/layui.js}"></script>
+
+<script>
+    //JavaScript代码区域
+    layui.use('element', function(){
+        const element = layui.element;
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8" >
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>企业共享分页</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+    <script th:src="@{/../static/Mtils.min.js}"></script>
+    <script th:src="@{/../static/layui.js}"></script>
+    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+
+</head>
+<script>
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i=0;i<vars.length;i++) {
+            var pair = vars[i].split("=");
+            if(pair[0] == variable){return pair[1];}
+        }
+        return false;
+    }
+
+    function CFInit(){
+        $.ajax({
+            url:"readMsg",
+            data:{
+              msgID: getQueryVariable("ID")
+            }
+        })
+        $.ajax({
+            url:"getMsg",
+            data:{
+                ID:getQueryVariable("ID")
+            },
+            success:function (data,status){
+                if (data == null ){
+                    layer.open({
+                        title: "错误!",
+                        content:"<span>地址有误，请确认，点击确定返回主页</span>",
+                        area: ['300px', '200px'],
+                        type:0,
+                        btn: ['确定'],
+                        yes: function(index, layero){
+                            window.location.href="http://localhost:8080/index";
+                            layer.close(index);
+                        }
+                    })
+                }
+                if (data.msg == "haveBelonging"){
+                    layer.open({
+                        title: "错误!",
+                        content:"<span>您已经位于一个企业，请先退出，点击确定返回主页</span>",
+                        area: ['300px', '200px'],
+                        type:0,
+                        btn: ['确定'],
+                        yes: function(index, layero){
+                            window.location.href="http://localhost:8080/index";
+                            layer.close(index);
+                        }
+                    })
+                }
+                if (data.msg == "errorReceiver"){
+                    layer.open({
+                        title: "错误!",
+                        content:"<span>您并非是该链接的接受者，点击确认返回主页</span>",
+                        area: ['300px', '200px'],
+                        type:0,
+                        btn: ['确定'],
+                        yes: function(index, layero){
+                            window.location.href="http://localhost:8080/index";
+                            layer.close(index);
+                        }
+                    })
+                }
+                else {
+                    sessionStorage.setItem("belongLayer",data.orgLayer);
+                    sessionStorage.setItem("belongOrder",data.orgOrder);
+                    sessionStorage.setItem("OrgID",data.sender);
+                    document.getElementById("title1").innerText="您好，您收到了一个"+data.type+",请确认";
+                    document.getElementById("inventSpan").innerText="您收到了来自于企业（OrgID="+data.sender+"）的邀请，邀请您进入"+data.orgPosition+"（部门）。\n发送时间："+data.sendTime;
+
+                }
+            }
+        })
+    }
+    function accept(){
+        $.ajax({
+            url:"acceptMsg",
+            data:{
+                msgID: getQueryVariable("ID")
+            }
+        })
+        $.ajax({
+            url:"addUserNote",
+            data: {
+                OrgID:sessionStorage.getItem("OrgID"),
+                belongLayer:sessionStorage.getItem("belongLayer"),
+                belongOrder:sessionStorage.getItem("belongOrder")
+            },
+            success:function (data,status){
+                layer.open({
+                    title: "已完成",
+                    content:"<span>您已经成功加入该企业,点击确定重新登录至主页</span>",
+                    area: ['300px', '200px'],
+                    type:0,
+                    btn: ['确定'],
+                    yes: function(index, layero){
+                        window.location.href="http://localhost:8080/exit";
+                        layer.close(index);
+                    }
+                })
+            }
+        })
+    }
+    function reject(){
+        $.ajax({
+            url:"rejectMsg",
+            data:{
+                msgID: getQueryVariable("ID")
+            }
+        })
+        layer.open({
+            title: "已完成",
+            content:"<span>您已经拒绝加入该企业,点击确定重新登录至主页</span>",
+            area: ['300px', '200px'],
+            type:0,
+            btn: ['确定'],
+            yes: function(index, layero){
+                window.location.href="http://localhost:8080/exit";
+                layer.close(index);
+            }
+        })
+    }
+</script>
+<body onload="CFInit()">
+<div style="text-align: center">
+    <h1 id="title1">
+        检测中...
+    </h1>
+    <img width="500px"height="500px" src="../static/images/logo.png"/>
+    <br>
+    <span id="inventSpan"></span>
+    <br>
+    <div>
+    <button class="layui-btn" onclick="accept()" >接收</button> <button class="layui-btn layui-btn-danger" onclick="reject()">拒绝</button>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" >
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>您收到了其他用户分享的文件</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+  <script th:src="@{/../static/Mtils.min.js}"></script>
+  <script th:src="@{/../static/layui.js}"></script>
+  <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+</head>
+
+<script>
+
+  function addPath(fileName,pathLayer,pathOrder){
+
+    sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+    sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+    sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+    //   alert(sessionStorage.getItem("fileName"+getQueryVariable("belongLayer"))+ sessionStorage.getItem("pathLayer"+getQueryVariable("belongLayer"))+sessionStorage.getItem("pathOrder"+getQueryVariable("belongLayer")) );
+  }
+  function getQueryVariable(variable)
+  {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+
+    return false;
+  }
+  function sessionClean(){
+    sessionStorage.clear();
+  }
+  function Init(){
+
+      var passCheck =false;
+      if (!getQueryVariable("url"))
+      {
+        layer.msg('您的地址格式错误，请检查',{icon:5,time:2000});
+        return false;
+      }
+
+      $.ajax({
+        url:"checkLinkExist",
+        data:{url: getQueryVariable("url")},
+        async:false,
+        success:function (data,status){
+          if(data == 0){
+            layer.msg('链接地址不存在或者已过期，请确认',{icon:5,time:2000});
+            return false;
+          }
+
+          else if (data == 1) {
+            sessionStorage.setItem("link_ID", getQueryVariable("url"));
+            if (sessionStorage.getItem("linkPassword") != null)
+              $.ajax({
+                url: "checkLinkPassword",
+                data: {ID: getQueryVariable("url"), password: sessionStorage.getItem("linkPassword")},
+                async:false,
+                success: function (data, status) {
+                  passCheck = data;
+                }
+              })
+
+            if (!passCheck) {
+              layer.open({
+                title: "输入链接密码",
+                content: "linkPassword",
+                area: ['500px', '300px'],
+                closeBtn: 0,
+                type: 2,
+                btn: ['确定'],
+
+                yes: function (index, layero) {
+                  var res = window["layui-layer-iframe" + index].callBackData();
+                  $.ajax({
+                    url: "checkLinkPassword",
+                    data: {ID: getQueryVariable("url"), password: res},
+                    success: function (data, status) {
+                      if (data) {
+                        sessionStorage.setItem("linkPassword", res);
+                        layer.close(index);
+                      } else {
+                        layer.msg('密码错误', {icon: 5, time: 800});
+                      }
+                    }
+                  })
+                },
+              });
+            }
+          }
+        }
+      })
+    //初始化导航参数
+    if(sessionStorage.getItem("count") == null)
+      sessionStorage.setItem("count","0");
+    else
+      sessionStorage.setItem("count",getQueryVariable("belongLayer"));
+
+
+//启动导航栏功能
+
+    document.getElementById("homeLink").setAttribute("href","/link?url="+getQueryVariable("url")+"&belongLayer=0&belongOrder=0");
+    let str = '';
+
+    for(let i=0; i<(parseInt(getQueryVariable("belongLayer"))?parseInt(getQueryVariable("belongLayer")):0); i++){
+
+      str += "<a  href='link?url="+getQueryVariable("url")+"&belongLayer="+sessionStorage.getItem("pathLayer"+i.toString())+"&belongOrder="+sessionStorage.getItem("pathOrder"+i.toString())+"'>"+sessionStorage.getItem("fileName"+i.toString())+"</a>"; //拼接str
+      if ( i != (parseInt(getQueryVariable("belongLayer"))-1)){
+        str += "<span>=></span>";
+      }
+      else {
+        str +="<span>&nbsp&nbsp&nbsp&nbspI:P</span>";
+      }
+    }
+    document.getElementById('navigationBar').innerHTML=document.getElementById('navigationBar').innerHTML+str;
+  }
+
+
+
+</script>
+<body onload="Init()">
+  <div class="layui-layout layui-layout-admin">
+  <div class="layui-header">
+    <a href="index" >
+    <div class="layui-logo" href="index.html">
+      <img src="/static/images/logo.png" style=" position:absolute;left:8px;top: 14px; width: 30px;height: 30px">
+      <span style="position:absolute;left: 50px; font-family: 楷体;font-weight: 10;font-size: 20px">鲸羽企业云盘</span>
+    </div>
+    </a>
+
+    <!-- 头部区域（可配合layui 已有的水平导航） -->
+    <ul class="layui-nav layui-layout-right">
+      <li class="layui-nav-item">
+        <a href="javascript:;">
+          <img src="//tva1.sinaimg.cn/crop.0.0.118.118.180/5db11ff4gw1e77d3nqrv8j203b03cweg.jpg" class="layui-nav-img">
+          <span id="userNameQuery"></span>
+        </a>
+        <dl class="layui-nav-child">
+          <dd><a href="index">返回主页</a></dd>
+        </dl>
+      </li>
+      <li class="layui-nav-item"><a href="/exit" onclick="sessionClean()"><i class="layui-icon" style="font-size: 18px;color: #eea63f;">&#x1006</i> 退出</a></li>
+    </ul>
+  </div>
+</div>
+
+
+<div id="pathNavigation" style="position:absolute; top: 8%;height: 2%;width: 100%; background: #ffffff">
+  <span id="navigationBar" class="layui-breadcrumb"> <a id="homeLink" href= "">主页</a> <a id="backLink" onclick="goBack();">返回上一级&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp</a> </span>
+</div>
+
+<div  th:id="linkFile" style="position: absolute;top: 9%;height: 91%;width: 100%;">
+  <table id="linkFileTable" lay-filter="linkTable">
+  </table>
+</div>
+
+  <script type="text/html" id="headToolBar">
+    <div class="demoTable">
+      搜索ID：
+      <div class="layui-inline">
+        <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+      </div>
+      <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+      <button class="layui-btn layui-btn-sm" lay-event="addToMineFile">添加到我的文件夹</button>
+    </div>
+  </script>
+<script>
+
+
+  layui.use('table', function(){
+    var table = layui.table;
+    let belongLayer =0;
+    let belongOrder =0;
+    if(!getQueryVariable("belongLayer")){
+       belongLayer =0;
+       belongOrder =0;
+    }
+      else{
+      belongLayer =getQueryVariable("belongLayer");
+      belongOrder =getQueryVariable("belongOrder");
+    }
+    //加载table实例
+    table.render({
+      elem:"#linkFileTable",//绑定ID属性
+      url: "/linkList_json?url="+getQueryVariable("url")+"&belongLayer="+belongLayer+"&belongOrder="+belongOrder,//不要写成url， data的格式，会报错！
+      cols: [
+        [
+          {field:'checkbox',type:'checkbox'},
+          {field:'remark',title:'文件名',sort:true},
+          {field:'fileType',title:'文件类型',sort:true},
+          {field:'sizeOfKB',title:'文件大小',sort:true}
+        ]
+      ],
+      page:true,
+      toolbar:'#headToolBar'
+    });
+
+    table.on('toolbar(linkTable)',function (obj){
+      //获取表格对象
+      var checkStatus = table.checkStatus(obj.config.id);
+      //获取事件名
+      var eventName = obj.event;
+      switch (eventName){
+        case "search":
+          break;
+        case "addToMineFile":
+          console.log(checkStatus.data);
+            layer.open({
+              title: "添加至...",
+              content: "indexTree",
+              area: ['500px', '500px'],
+              closeBtn: 0,
+              type: 2,
+              btn: ['确定','取消'],
+
+              yes: function (index, layero) {
+                console.log(sessionStorage.getItem("choose"))
+
+                if (sessionStorage.getItem("choose")=="null")
+                  layer.msg('请选中一个文件夹',{icon:4,time:1500});
+                else{
+                  let targetLayer = sessionStorage.getItem("choose").match(/{(\S*)-/)[1];
+                  let targetOrder = sessionStorage.getItem("choose").match(/-(\S*)}/)[1];
+                  var checkData = checkStatus.data;
+
+                  console.log(checkData+targetLayer+targetOrder);
+                  addLinkToFiles(sessionStorage.getItem("userName"),checkData,targetLayer,targetOrder,1)
+
+                  layer.close(index);
+                }
+              },
+            });
+
+
+          break;
+        default:
+          break;
+      }
+    })
+
+
+
+
+
+
+  })
+
+  function goBack(){
+    window.history.back();
+  }
+  //设置导航参数
+  function addPath(fileName,pathLayer,pathOrder){
+
+    sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+    sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+    sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+  }
+
+  function addLinkToFiles(userName,checkData,belongLayer,belongOrder,handle){
+
+    for (let i = 0; i < checkData.length; i++) {
+      //直接从前端取值，需要将外包去掉
+      if(handle == 1){
+        if (checkData[i].fileOrNot == '1'){
+          let substr =  checkData[i].remark.match(/load='(\S*)'>/);
+          checkData[i].remark=substr[1];
+        }
+        else {
+          var substr =  checkData[i].remark.match(/'>(\S*)</);
+          checkData[i].remark=substr[1];
+          checkData[i].fileType = "0";
+        }
+      }
+      //直接从前端取值，不需要去掉外包
+      else {
+        //但是需要把文件夹改为0
+        if (checkData[i].fileOrNot == '0'){
+           checkData[i].fileType = "0";
+        }
+
+      }
+      console.log(checkData[i]);
+      let order = 0;
+      //查询目前应属次序
+      $.ajax({
+        url:"/queryMaxOrder",
+        async:false,
+        data:{userName:userName,
+          layer:parseInt(belongLayer)+1
+        },
+        success:function (data,status){
+          if (data != null) {
+            order = data;
+
+          }
+          else
+            order = 1;
+          console.log("查询到MAXORDER = "+ order)
+        },
+        default:function (data,status){
+          layer.msg('出现错误，错误码001a，请重试',{icon:4,time:1500});
+        }
+      })
+
+      $.ajax({
+        url:"/addLinkToFile",
+        async:false,
+        data:{userName:userName,
+          remark:checkData[i].remark,
+          fileID:checkData[i].fileID,
+          belongOrder:belongOrder,
+          belongLayer:belongLayer,
+          layer:parseInt(belongLayer)+1,
+          order: parseInt(order)+1,
+          fileType:checkData[i].fileType,
+          sizeOfKB:checkData[i].sizeOfKB,
+          fileOrNot: checkData[i].fileOrNot
+        },
+        success:function (data,status){
+
+        }
+      })
+      //如果是文件夹节点
+      if (checkData[i].fileOrNot == 0){
+        $.ajax({
+          url:"linkList",
+          async:false,
+          data:{belongID:getQueryVariable("url"),
+            belongLayer:checkData[i].layer,
+            belongOrder:checkData[i].order},
+          success:function (data,status){
+            addLinkToFiles(userName,data,parseInt(belongLayer)+1,order+1,0);
+          }
+        })
+      }
+    }
+  }
+</script>
+</body>
+</html>

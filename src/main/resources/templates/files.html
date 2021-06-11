@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>全部文件分页</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+</head>
+<style>
+
+</style>
+
+<script>
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i=0;i<vars.length;i++) {
+            var pair = vars[i].split("=");
+            if(pair[0] == variable){return pair[1];}
+        }
+        return false;
+    }
+
+    function showThis(fileID,fileType){
+
+         if (fileType == ".ico" || fileType == ".png" || fileType == ".jpeg" || fileType == ".jpg" || fileType == ".tiff" || fileType == ".gif" || fileType == ".bmp") {
+             $('#ElemInfoImage').attr("src", "/static/update/" + fileID + fileType);
+             $("#ElemInfo").stop(true, true);
+             $("#ElemInfo").animate({opacity: '1'});
+         }
+
+        if (fileType == ".mp4" ||fileType == ".avi" ||fileType == ".wmv" ||fileType == ".mpeg"||fileType == ".mpg"||fileType == ".mov"||fileType == ".swf"||fileType == ".flv"||fileType == ".rm"||fileType == ".ram"||fileType == ".asf"||fileType == ".rmvb"||fileType == ".3gp"||fileType == ".mpg"||fileType == ".dat"||fileType == ".ts"||fileType == ".lavf"||fileType == ".dirac"||fileType == ".3g2"||fileType == ".m2ts"||fileType == ".webm"||fileType == ".m2t"||fileType == ".fli"||fileType == ".flc"){
+            $('#VideoInfoImage').attr("src", "/static/update/" + fileID + fileType);
+            $("#VideoInfo").stop(true, true);
+            $("#VideoInfo").animate({opacity: '1'});
+         }
+
+        if (fileType == ".mp3" ||fileType == ".cda" ||fileType == ".wav" ||fileType == ".mp3p"||fileType == ".wma"||fileType == ".ra"||fileType == ".midi"||fileType == ".ogg"||fileType == ".ape"||fileType == ".flac"||fileType == ".aac"){
+
+            parent.document.getElementById("musicPlayer").style.display="";
+            parent.document.getElementById("startPlay").style.display="none";
+            parent.document.getElementById("pausePlay").style.display="";
+            parent.document.getElementById("loopPlay").style.display="";
+            parent.document.getElementById("closeLoopPlay").style.display="none";
+            $.ajax({
+                url:"queryMusicName",
+                data: {
+                    MusicID:fileID,
+                },
+                success:function (data,status){
+                    parent.document.getElementById("MusicInfo").innerText="正在播放"+data+"......";
+                }
+            })
+            $('#Music',parent.document).attr("src", "/static/update/" + fileID + fileType);
+        }
+    }
+
+    function hideThis(fileType){
+        if (fileType == ".ico" || fileType == ".png" || fileType == ".jpeg" || fileType == ".jpg" || fileType == ".tiff" || fileType == ".gif" || fileType == ".bmp") {
+            $("#ElemInfo").stop(true, true);
+            $("#ElemInfo").animate({opacity: '0'}, "slow");
+        }
+        if (fileType == ".mp4" ||fileType == ".avi" ||fileType == ".wmv" ||fileType == ".mpeg"||fileType == ".mpg"||fileType == ".mov"||fileType == ".swf"||fileType == ".flv"||fileType == ".rm"||fileType == ".ram"||fileType == ".asf"||fileType == ".rmvb"||fileType == ".3gp"||fileType == ".mpg"||fileType == ".dat"||fileType == ".ts"||fileType == ".lavf"||fileType == ".dirac"||fileType == ".3g2"||fileType == ".m2ts"||fileType == ".webm"||fileType == ".m2t"||fileType == ".fli"||fileType == ".flc") {
+            $("#VideoInfo").stop(true, true);
+            $("#VideoInfo").animate({opacity: '0'}, "slow");
+            $("#VideoInfoImage").trigger('pause');
+        }
+    }
+
+    function myInit(){
+        //参数初始化
+        $.ajax({
+            async:false,
+            url:"/getUserIDByName",
+            data:{userName:getQueryVariable("userName")},
+            success:function (data,status){
+                sessionStorage.setItem("userID",data);
+            }
+        })
+
+        //消息提示
+        if(getQueryVariable("msg"))
+            alert("请勿重复上传");
+
+        //初始化导航参数
+        if(sessionStorage.getItem("count") == null)
+            sessionStorage.setItem("count","0");
+        else
+            sessionStorage.setItem("count",getQueryVariable("belongLayer"));
+
+        //启动导航栏功能
+        var str='';
+        for(var i=0; i<parseInt(getQueryVariable("belongLayer"));i++){
+
+            str += "<a  href='files?userName="+getQueryVariable("userName")+"&belongLayer="+sessionStorage.getItem("pathLayer"+i.toString())+"&belongOrder="+sessionStorage.getItem("pathOrder"+i.toString())+"'>"+sessionStorage.getItem("fileName"+i.toString())+"</a>"; //拼接str
+            if ( i != (parseInt(getQueryVariable("belongLayer"))-1)){
+                str += "<span>=></span>";
+            }
+            else {
+                str +="<span>&nbsp&nbsp&nbsp&nbspI:P</span>";
+            }
+
+        }
+        document.getElementById('navigationBar').innerHTML=document.getElementById('navigationBar').innerHTML+str;
+        document.getElementById("homeLink").setAttribute("href","/files?userName="+getQueryVariable("userName")+"&belongLayer=0&belongOrder=0");
+
+        if (("0"==getQueryVariable("belongLayer")&"0"==getQueryVariable("belongOrder")))
+           document.getElementById("backLink").style.display="none";
+        $.ajax({
+            url: "/list",
+            data: {
+                belongLayer: getQueryVariable("belongLayer"),
+                belongOrder: getQueryVariable("belongOrder")},
+            success: function (data,status){
+                if(data==""){
+                    document.getElementById("noFile").style.display = "";
+                    document.getElementById("haveFile").style.display = "none";
+                }
+                else {
+                    document.getElementById("haveFile").style.display = "";
+                    document.getElementById("noFile").style.display = "none";
+                }
+            }
+        })
+    }
+
+</script>
+<script>
+    function newFolder(){
+        document.getElementById("FolderName").style.display = "";
+        document.getElementById("confirmNewFolderButton").style.display = "";
+        document.getElementById("cancelNewFolderButton").style.display = "";
+        document.getElementById("newFolderButton").style.display = "none";
+    }
+    function cancelNewFolder(){
+        document.getElementById("FolderName").style.display = "none";
+        document.getElementById("confirmNewFolderButton").style.display = "none";
+        document.getElementById("cancelNewFolderButton").style.display = "none";
+        document.getElementById("newFolderButton").style.display = "";
+    }
+    function confirmNewFolder(){
+        if (document.getElementById("FolderName").value.indexOf("<") != -1){
+            alert("请勿将< >作为文件夹名");
+            return;
+        }
+        $.ajax({
+            url:"queryMaxOrder",
+            data:{userName: getQueryVariable("userName"),layer:(parseInt(getQueryVariable("belongLayer"))+1)},
+            success:function (data,status){
+                $.ajax({
+                    url:"addFolder",
+                    data:{userName:getQueryVariable("userName"),
+                        layer: (parseInt(getQueryVariable("belongLayer"))+1),
+                        order:(data+1),
+                        belongLayer: getQueryVariable("belongLayer"),
+                        belongOrder: getQueryVariable("belongOrder"),
+                        remark: document.getElementById("FolderName").value},
+                    success:function (data2,status){
+                        window.location.reload(true);
+                    }
+                })
+            }
+        })
+    }
+function goBack(){
+        window.history.back();
+}
+//设置导航参数
+function addPath(fileName,pathLayer,pathOrder){
+
+        sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+        sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+        sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+     //   alert(sessionStorage.getItem("fileName"+getQueryVariable("belongLayer"))+ sessionStorage.getItem("pathLayer"+getQueryVariable("belongLayer"))+sessionStorage.getItem("pathOrder"+getQueryVariable("belongLayer")) );
+}
+function initParam(){
+        document.getElementById("belongLayer").value=getQueryVariable("belongLayer");
+        document.getElementById("belongOrder").value=getQueryVariable("belongOrder");
+        document.getElementById("userName").value=getQueryVariable("userName");
+
+}
+</script>
+
+
+
+
+<body onload="myInit()">
+
+<!--顶部功能菜单-->
+<div class="layui-inline" style="position:absolute; top: 0px;height: 7%;width: 100%; background: #ffffff">
+<form role="form" th:action="@{/upload}" method="post" enctype="multipart/form-data" width="15%" >
+    <input type="file" multiple class="layui-btn" id="chooseFile" name="chooseFile">
+    <button  onclick="initParam()" type="submit" class="layui-btn" id="uploadFileButton" ><i class="layui-icon">&#xe61f;</i>上传所选文件</button>
+    <input  type="text" height="80px" placeholder="请输入文件夹名称" class="input" id="FolderName" style="display: none">
+    <button onclick="newFolder()" type="button" class="layui-btn"  id="newFolderButton"><i class="layui-icon">&#xe61f;</i>新建文件夹</button>
+    <button onclick="confirmNewFolder()" type="button" class="layui-btn"  id="confirmNewFolderButton" style="display: none"><i class="layui-icon">&#xe61f;</i>确认</button>
+    <button onclick="cancelNewFolder()" type="button" class="layui-btn"  id="cancelNewFolderButton" style="display: none"><i class="layui-icon">&#xe61f;</i>取消</button>
+
+    <input id="belongLayer" name="belongLayer" style="display: none">
+    <input id="belongOrder" name="belongOrder" style="display: none">
+    <input id="userName" name="userName" style="display: none">
+</form>
+</div>
+<!--顶部路径导航菜单-->
+<div id="pathNavigation" style="position:absolute; top: 7%;height: 2%;width: 100%;">
+<span id="navigationBar" class="layui-breadcrumb"> <a id="homeLink" href= "">主页</a> <a id="backLink" onclick="goBack();">返回上一级&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp</a> </span>
+</div>
+<!--无文件时，显示以下界面-->
+<div th:id="noFile" style="position: absolute;top: 9%;height: 91%;width: 100%;display: none">
+    <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 30%">
+    <hr>
+        <i style="position: absolute;left: 28%;font-size: 30px ;" class="layui-icon"> &#xe60c;您这里空空如也,请上传或新建文件或文件夹吧！&#xe60c;</i>
+    </div>
+</div >
+
+
+<!--有文件时，显示以下界面-->
+<div  th:id="haveFile" style="position: absolute;top: 9%;height: 91%;width: 100%;display: none;z-index: 1">
+
+    <table id="fileTable" lay-filter="mainTable">
+    </table>
+
+<!--<span id="userNameQuery" th:value="${session.loginUser.userName}" th:text="${session.loginUser.userName}">survey</span><span>欢迎您，您现在看到的是全部文件页面</span>-->
+</div>
+<div  id="ElemInfo" style="right: 50px; margin-top: 20px; width: 300px; height: 300px; z-index: 2;position:absolute;opacity: 0">
+    <img width="300px" height="300px" id="ElemInfoImage">
+</div>
+
+<div  id="VideoInfo" style="right: 50px; margin-top: 20px; width: 640px; height: 360px; z-index: 2;position:absolute;opacity: 0">
+    <VIDEO autoplay  width="640px" height="360px" id="VideoInfoImage"></VIDEO>
+</div>
+
+<script th:src="@{/../static/layui.js}"></script>
+
+<script type="text/html" id="headToolBar">
+    <div class="demoTable">
+        搜索ID：
+        <div class="layui-inline">
+            <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+        </div>
+        <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+        <button class="layui-btn layui-btn-sm" lay-event="link">生成分享链接</button>
+        <button class="layui-btn layui-btn-sm" lay-event="share">分享到企业目录</button>
+        <button class="layui-btn layui-btn-sm" lay-event="delete">删除选中文件</button>
+    </div>
+</script>
+
+<script th:src="@{/../static/Mtils.min.js}"></script>
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+<script>
+    //JavaScript代码区域
+    function addFilesToOrg(checkData,OrgLayer,OrgOrder,belongLayer,belongOrder){
+        for (let i = 0; i < checkData.length; i++) {
+
+            if (checkData[i].fileOrNot == 1){
+                let substr =  checkData[i].remark.match(/load='(\S*)'>/);
+                checkData[i].remark=substr[1];
+            }
+            else {
+                var substr =  checkData[i].remark.match(/'>(\S*)</);
+                checkData[i].remark=substr[1];
+            }
+            console.log(checkData[i]);
+            let order = 0;
+            $.ajax({
+                url:"/queryMaxOrderInOrg",
+                async:false,
+                data:{
+                    OrgOrder:OrgOrder,
+                    OrgLayer:OrgLayer,
+                    layer:parseInt(belongLayer)+1
+                },
+                success:function (data,status){
+                    order = data;
+                }
+            })
+            $.ajax({
+                url:"/addFilesToOrg",
+                async:false,
+                data:{
+                    remark:checkData[i].remark,
+                    fileID:checkData[i].fileID,
+                    OrgLayer:OrgLayer,
+                    OrgOrder:OrgOrder,
+                    belongOrder:belongOrder,
+                    belongLayer:belongLayer,
+                    layer:parseInt(belongLayer)+1,
+                    order: order+1,
+                    fileType:checkData[i].fileType,
+                    fileOrNot:checkData[i].fileOrNot,
+                    sizeOfKB:checkData[i].sizeOfKB
+                },
+                success:function (data,status){
+
+                }
+            })
+            //如果是文件夹节点
+            if (checkData[i].fileOrNot == 0){
+                $.ajax({
+                    url:"list",
+                    async:false,
+                    data:{
+                        belongLayer:checkData[i].layer,
+                        belongOrder:checkData[i].order},
+                    success:function (data,status){
+                        addFilesToOrg(data,OrgLayer,OrgOrder,parseInt(belongLayer)+1,order+1);
+                    }
+                })
+            }
+        }
+    }
+    function addFilesToLink(linkID,checkData,belongLayer,belongOrder){
+        for (let i = 0; i < checkData.length; i++) {
+
+            if (checkData[i].fileOrNot == 1){
+                let substr =  checkData[i].remark.match(/load='(\S*)'>/);
+                checkData[i].remark=substr[1];
+            }
+            else {
+                var substr =  checkData[i].remark.match(/'>(\S*)</);
+                checkData[i].remark=substr[1];
+            }
+            console.log(checkData[i]);
+            let order = 0;
+            $.ajax({
+                url:"/queryMaxOrderInLink",
+                async:false,
+                data:{belongID:linkID,
+                    layer:parseInt(belongLayer)+1
+                },
+                success:function (data,status){
+                    order = data;
+                }
+            })
+            $.ajax({
+                url:"/addFilesToLink",
+                async:false,
+                data:{belongID:linkID,
+                    remark:checkData[i].remark,
+                    fileID:checkData[i].fileID,
+                    belongOrder:belongOrder,
+                    belongLayer:belongLayer,
+                    layer:parseInt(belongLayer)+1,
+                    order: order+1,
+                    fileType:checkData[i].fileType,
+                    fileOrNot:checkData[i].fileOrNot,
+                    sizeOfKB:checkData[i].sizeOfKB
+                },
+                success:function (data,status){
+
+                }
+            })
+        //如果是文件夹节点
+        if (checkData[i].fileOrNot == 0){
+            $.ajax({
+                url:"list",
+                async:false,
+                data:{userName:getQueryVariable("userName"),
+                belongLayer:checkData[i].layer,
+                belongOrder:checkData[i].order},
+                success:function (data,status){
+                    addFilesToLink(linkID,data,parseInt(belongLayer)+1,order+1);
+                }
+            })
+        }
+        }
+    }
+
+    layui.use('table', function(){
+        var table = layui.table;
+        //加载table实例
+        table.render({
+           elem:"#fileTable",//绑定ID属性
+            url: "/list_json?&belongLayer="+getQueryVariable("belongLayer")+"&belongOrder= "+getQueryVariable("belongOrder"),//不要写成url， data的格式，会报错！
+            cols: [
+                [
+                    {field:'checkbox',type:'checkbox'},
+                    {field:'remark',title:'文件名',sort:true},
+                    {field:'fileType',title:'文件类型',sort:true},
+                    {field:'sizeOfKB',title:'文件大小',sort:true}
+                ]
+            ],
+            page:true,
+            toolbar:'#headToolBar',
+
+        });
+        table.on('toolbar(mainTable)',function (obj){
+
+            //获取表格对象
+            var checkStatus = table.checkStatus(obj.config.id);
+            //获取事件名
+            var eventName = obj.event;
+            switch (eventName){
+                case "search":
+                    let keyWord = $("#demoReload").val();
+                    if (keyWord == "")
+                        layer.msg('请输入关键字', {icon: 5, time: 800});
+                    else {
+                        table.reload("fileTable",{
+                            where:{
+                                remark: keyWord
+                            },
+                            page: {
+                                curr:1
+                            }
+                        })
+                    }
+                    break;
+                case "link":
+                    let ID =Mtils.security.hex_md5(getQueryVariable("userName")+(new Date()).valueOf());
+                    layer.open({
+                        title: "修改链接属性",
+                        content:"editLink",
+                        area: ['50%', '90%'],
+                        type:2,
+                        btn: ['确定', '关闭'],
+                        yes: function(index, layero){
+                            var res = window["layui-layer-iframe" + index].callBackData();
+                            if(res[2]== 7 )
+                                res[2] = "DATE_ADD(NOW(),INTERVAL 7 DAY)"
+                            if (res[2] == 30)
+                                res[2] = "DATE_ADD(NOW(),INTERVAL 30 DAY)"
+                            if (res[2] == 999)
+                                res[2] = "null"
+                            if (res[1] == "")
+                                res[1] = Mtils.security.hex_md5((new Date()).valueOf().toString().substr(7,13)).substr(26,31);
+                            if (res[3]==1)
+                                res[1] = "";
+
+                            layer.close(index);
+                            myajax=$.ajax({
+                                async: false,
+                                url: "/createLink",
+                                data:{creator:sessionStorage.getItem("userID"),deadTime:res[2],ID:ID,password:res[1],reMark:res[0]},
+                                success:function (data,status){
+                                    layer.open({
+                                        title:"链接",
+                                        content:"您的链接已生成：<input id='COPY' value='localhost:8080/link?url="+ID+"'>密码为"+res[1],
+                                        type:1,
+                                        btn: ['复制地址', '关闭'],
+                                        yes:function (index,layero){
+                                            document.getElementById("COPY").select();
+                                            document.execCommand("Copy");
+                                            layer.close(index);
+                                            layer.msg('复制成功,稍后您可以在我的分享中浏览和管理已建立的分享',{icon:1,time:2000});
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    });
+                    addFilesToLink(ID,checkStatus.data,0,0);
+                    break;
+                case "share":
+                    sessionStorage.setItem("OrgLayer",null)
+                    sessionStorage.setItem("OrgOrder",null)
+                    layer.open({
+                        title: "选择目标部门和目标文件夹",
+                        content:"/OrgTree",
+                        area: ['350px', '600px'],
+                        type:2,
+                        btn: ['确定','取消'],
+                        yes:function (index,layero){
+
+                            addFilesToOrg(checkStatus.data,sessionStorage.getItem("OrgLayer"),sessionStorage.getItem("OrgOrder"),sessionStorage.getItem("OrgFileLayer"),sessionStorage.getItem("OrgFileOrder"));
+                            layer.msg('分享成功', {icon: 1, time: 1000});
+                            layer.close(index);
+                        },
+                        button2:function (index,layero){
+                            layer.close(index);
+                        }
+                    })
+                    break;
+                case "delete":
+                    sessionStorage.setItem("deleteMark","0");
+                    deleteFiles(checkStatus.data);
+                    break;
+                default:
+                    break;
+            }
+        })
+    });
+
+    function deleteFiles(checkData) {
+
+        for (let i = 0; i < checkData.length; i++) {
+            console.log("开始删除任务"+checkData[i].remark+"为首长度"+checkData.length)
+            //是个文件夹
+            if (checkData[i].fileOrNot == 0){
+                console.log("是个文件夹")
+                $.ajax({
+                    async:false,
+                    url:"list",
+                    data:{
+                        belongLayer:checkData[i].layer,
+                        belongOrder:checkData[i].order,
+                    },
+                    success:function (data,status){
+                        if (data != "") {
+                            console.log("文件夹不为空")
+                            //已经确认过了
+                            if (sessionStorage.getItem("deleteMark") == "1") {
+                                console.log("确认过了")
+                                $.ajax({
+                                    url: "deleteFile",
+                                    async:false,
+                                    data: {
+                                        layer: checkData[i].layer,
+                                        order: checkData[i].order,
+                                    }
+                                })
+                                deleteFiles(data);
+                            }
+                            //未确认过信息
+                            else{
+                                console.log("未确认，打开确认栏")
+
+
+                                layer.open({
+                                    title: "删除确认！",
+                                    content: "<span>您删除的文件夹中有文件存在，请问是否一并删除，点击确定，后续文件夹将不再提示。点击取消，未删除的文件将不再删除，已删除文件不再恢复,删除完成后请手动刷新</span>",
+                                    closeBtn: 0,
+                                    area: ['300px', '250px'],
+                                    type: 0,
+                                    btn: ['确定', '取消'],
+                                    btn1: function (index, layero) {
+                                        console.log("确认了删除")
+                                        $.ajax({
+                                            url: "deleteFile",
+                                            async:false,
+                                            data: {
+                                                layer: checkData[i].layer,
+                                                order: checkData[i].order,
+                                            }
+                                        })
+                                        sessionStorage.setItem("deleteMark", "1");
+                                        deleteFiles(data);
+                                        layer.close(index);
+                                        layer.open({
+                                            title: "请点击刷新页面！",
+                                            content: "<span>删除成功，请点击确定刷新页面</span>",
+                                            area: ['300px', '250px'],
+                                            type: 0,
+                                            btn: ['确定'],
+                                            yes:function (index2,){
+                                                layer.close(index2);
+                                                location.reload();
+                                    }
+                                        })
+                                    },
+                                    btn2: function (index, layero) {
+                                        console.log("取消删除")
+                                        location.reload();
+                                        layer.close(index);
+                                    },
+
+                                })
+
+                            }
+                        }
+                        //文件夹时空的
+                        else {
+                            console.log("文件夹空")
+                            $.ajax({
+                                async:false,
+                                url:"deleteFile",
+                                data:{
+                                    layer:checkData[i].layer,
+                                    order:checkData[i].order,
+                                }
+                            })
+                        }
+                    }
+                })
+            }
+            //是文件
+            else{
+                console.log(checkData[i].fileID);
+                $.ajax({
+                    async:false,
+                    url:"deleteFile",
+                    data:{
+                        layer:checkData[i].layer,
+                        order:checkData[i].order,
+                    }
+                })
+            }
+        }
+    }
+
+</script>
+</body>
+</html>
+

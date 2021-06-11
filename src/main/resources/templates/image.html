@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>全部文件分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+</head>
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+<script>
+  function getQueryVariable(variable)
+  {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+    return false;
+  }
+  function showThis(fileID,fileType) {
+     $('#ElemInfoImage').attr("src", "/static/update/" + fileID + fileType);
+      $("#ElemInfo").stop(true, true);
+      $("#ElemInfo").animate({opacity: '1'});
+
+  }
+  function hideThis(fileType) {
+      $("#ElemInfo").stop(true, true);
+      $("#ElemInfo").animate({opacity: '0'}, "slow");
+  }
+
+  function imageInit(){
+    //参数初始化
+    $.ajax({
+      async:false,
+      url:"/getUserIDByName",
+      data:{userName:getQueryVariable("userName")},
+      success:function (data,status){
+        sessionStorage.setItem("userID",data);
+      }
+    })
+
+    //消息提示
+    if(getQueryVariable("msg"))
+      alert("请勿重复上传");
+
+    //初始化导航参数
+    if(sessionStorage.getItem("count") == null)
+      sessionStorage.setItem("count","0");
+    else
+      sessionStorage.setItem("count",getQueryVariable("belongLayer"));
+
+    //启动导航栏功能
+    var str='';
+    for(var i=0; i<parseInt(getQueryVariable("belongLayer"));i++){
+
+      str += "<a  href='files?userName="+getQueryVariable("userName")+"&belongLayer="+sessionStorage.getItem("pathLayer"+i.toString())+"&belongOrder="+sessionStorage.getItem("pathOrder"+i.toString())+"'>"+sessionStorage.getItem("fileName"+i.toString())+"</a>"; //拼接str
+      if ( i != (parseInt(getQueryVariable("belongLayer"))-1)){
+        str += "<span>=></span>";
+      }
+      else {
+        str +="<span>&nbsp&nbsp&nbsp&nbspI:P</span>";
+      }
+
+    }
+    document.getElementById('navigationBar').innerHTML=document.getElementById('navigationBar').innerHTML+str;
+    document.getElementById("homeLink").setAttribute("href","/files?userName="+getQueryVariable("userName")+"&belongLayer=0&belongOrder=0");
+
+    //   document.getElementById("backLink").setAttribute("href","/files?userName="+getQueryVariable("userName")+"&belongLayer="+getQueryVariable("belongLayer")+"&belongOrder="+getQueryVariable("belongOrder"));
+    if (("0"==getQueryVariable("belongLayer")&"0"==getQueryVariable("belongOrder")))
+      document.getElementById("backLink").style.display="none";
+    $.ajax({
+      url: "/list",
+      data: {
+        belongLayer: getQueryVariable("belongLayer"),
+        belongOrder: getQueryVariable("belongOrder")},
+      fileType: "image",
+      success: function (data,status){
+        if(data==""){
+          document.getElementById("noFile").style.display = "";
+          document.getElementById("haveFile").style.display = "none";
+        }
+        else {
+          document.getElementById("haveFile").style.display = "";
+          document.getElementById("noFile").style.display = "none";
+        }
+      }
+    })
+  }
+
+</script>
+<script>
+
+  function goBack(){
+    window.history.back();
+  }
+  //设置导航参数
+  function addPath(fileName,pathLayer,pathOrder){
+
+    sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+    sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+    sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+    //   alert(sessionStorage.getItem("fileName"+getQueryVariable("belongLayer"))+ sessionStorage.getItem("pathLayer"+getQueryVariable("belongLayer"))+sessionStorage.getItem("pathOrder"+getQueryVariable("belongLayer")) );
+  }
+  function initParam(){
+    document.getElementById("belongLayer").value=getQueryVariable("belongLayer");
+    document.getElementById("belongOrder").value=getQueryVariable("belongOrder");
+    document.getElementById("userName").value=getQueryVariable("userName");
+  }
+</script>
+
+<body onload="imageInit()">
+<!--顶部功能菜单-->
+<div class="layui-inline" style="position:absolute; top: 0px;height: 0%;width: 100%; background: #ffffff">
+  <form role="form" th:action="@{/upload}" method="post" enctype="multipart/form-data" width="15%" >
+    <input id="belongLayer" name="belongLayer" style="display: none">
+    <input id="belongOrder" name="belongOrder" style="display: none">
+    <input id="userName" name="userName" style="display: none">
+  </form>
+</div>
+<!--顶部路径导航菜单-->
+<div id="pathNavigation" style="position:absolute; top: 0%;height: 2%;width: 100%; background: #ffffff">
+  <span id="navigationBar" class="layui-breadcrumb"> <a id="homeLink" href= "">主页</a> <a id="backLink" onclick="goBack();">返回上一级&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp</a> </span>
+</div>
+<!--无文件时，显示以下界面-->
+<div th:id="noFile" style="position: absolute;top: 2%;height: 98%;width: 100%;display: none">
+  <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 30%">
+    <hr>
+    <i style="position: absolute;left: 28%;font-size: 30px ;" class="layui-icon"> &#xe60c;您这里空空如也,请上传或新建文件或文件夹吧！&#xe60c;</i>
+  </div>
+</div >
+
+
+<!--有文件时，显示以下界面-->
+<div  th:id="haveFile" style="position: absolute;top: 2%;height: 98%;width: 100%;display: none;z-index: 1">
+  <table id="fileTable" lay-filter="mainTable">
+  </table>
+  <!--<span id="userNameQuery" th:value="${session.loginUser.userName}" th:text="${session.loginUser.userName}">survey</span><span>欢迎您，您现在看到的是全部文件页面</span>-->
+</div>
+
+<div  id="ElemInfo" style="right: 50px; margin-top: 50px; width: 300px; height: 300px; z-index: 2;position:absolute;opacity: 0">
+  <img width="300px" height="300px" id="ElemInfoImage">
+</div>
+
+
+<script th:src="@{/../static/layui.js}"></script>
+
+<script type="text/html" id="headToolBar">
+  <div class="demoTable">
+    搜索ID：
+    <div class="layui-inline">
+      <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+    </div>
+    <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+    <button class="layui-btn layui-btn-sm" lay-event="link">生成分享链接</button>
+    <button class="layui-btn layui-btn-sm" lay-event="share">分享到企业目录</button>
+    <button class="layui-btn layui-btn-sm" lay-event="delete">删除选中文件</button>
+  </div>
+</script>
+
+<script th:src="@{/../static/Mtils.min.js}"></script>
+<script>
+  //JavaScript代码区域
+  function addFilesToLink(linkID,checkData,belongLayer,belongOrder){
+
+    for (let i = 0; i < checkData.length; i++) {
+
+      if (checkData[i].fileOrNot == 1){
+        var substr =  checkData[i].remark.match(/load='(\S*)'>/);
+        checkData[i].remark=substr[1];
+      }
+      else {
+        var substr =  checkData[i].remark.match(/'>(\S*)</);
+        checkData[i].remark=substr[1];
+      }
+      console.log(checkData[i]);
+      let order = 0;
+      $.ajax({
+        url:"/queryMaxOrderInLink",
+        async:false,
+        data:{belongID:linkID,
+          layer:parseInt(belongLayer)+1
+        },
+        success:function (data,status){
+          order = data;
+        }
+      })
+      $.ajax({
+        url:"/addFilesToLink",
+        async:false,
+        data:{belongID:linkID,
+          remark:checkData[i].remark,
+          fileID:checkData[i].fileID,
+          belongOrder:belongOrder,
+          belongLayer:belongLayer,
+          layer:parseInt(belongLayer)+1,
+          order: order+1,
+          fileType:checkData[i].fileType,
+          fileOrNot:checkData[i].fileOrNot,
+          sizeOfKB:checkData[i].sizeOfKB
+        },
+        success:function (data,status){
+
+        }
+      })
+      //如果是文件夹节点
+      if (checkData[i].fileOrNot == 0){
+        $.ajax({
+          url:"list",
+          async:false,
+          data:{
+            fileType:"image",
+            belongLayer:checkData[i].layer,
+            belongOrder:checkData[i].order},
+          success:function (data,status){
+            addFilesToLink(linkID,data,parseInt(belongLayer)+1,order+1);
+          }
+        })
+      }
+    }
+  }
+
+  layui.use('table', function(){
+    var table = layui.table;
+    //加载table实例
+    table.render({
+      elem:"#fileTable",//绑定ID属性
+      url: "/list_json?&fileType=image&belongLayer=0&belongOrder=0",//不要写成url， data的格式，会报错！
+      cols: [
+        [
+          {field:'checkbox',type:'checkbox'},
+          {field:'remark',title:'文件名',sort:true},
+          {field:'fileType',title:'文件类型',sort:true},
+          {field:'sizeOfKB',title:'文件大小',sort:true}
+        ]
+      ],
+      page:true,
+      toolbar:'#headToolBar',
+
+    });
+    table.on('toolbar(mainTable)',function (obj){
+
+      //获取表格对象
+      var checkStatus = table.checkStatus(obj.config.id);
+      //获取事件名
+      var eventName = obj.event;
+      switch (eventName){
+        case "search":
+          let keyWord = $("#demoReload").val();
+          if (keyWord == "")
+            layer.msg('请输入关键字', {icon: 5, time: 800});
+          else {
+            table.reload("fileTable",{
+              where:{
+                remark: keyWord
+              },
+              page: {
+                curr:1
+              }
+            })
+          }
+          break;
+        case "link":
+          var ID =Mtils.security.hex_md5(getQueryVariable("userName")+(new Date()).valueOf());
+          layer.open({
+            title: "修改链接属性",
+            content:"editLink",
+            area: ['50%', '90%'],
+            type:2,
+            btn: ['确定', '关闭'],
+            yes: function(index, layero){
+              var res = window["layui-layer-iframe" + index].callBackData();
+              if(res[2]== 7 )
+                res[2] = "DATE_ADD(NOW(),INTERVAL 7 DAY)"
+              if (res[2] == 30)
+                res[2] = "DATE_ADD(NOW(),INTERVAL 30 DAY)"
+              if (res[2] == 999)
+                res[2] = "null"
+              if (res[1] == "")
+                res[1] = Mtils.security.hex_md5((new Date()).valueOf().toString().substr(7,13)).substr(26,31);
+              if (res[3]==1)
+                res[1] = "";
+
+              layer.close(index);
+              myajax=$.ajax({
+                async: false,
+                url: "/createLink",
+                data:{creator:sessionStorage.getItem("userID"),deadTime:res[2],ID:ID,password:res[1],reMark:res[0]},
+                success:function (data,status){
+                  layer.open({
+                    title:"链接",
+                    content:"您的链接已生成：<input id='COPY' value='localhost:8080/link?url="+ID+"'>密码为"+res[1],
+                    type:1,
+                    btn: ['复制地址', '关闭'],
+                    yes:function (index,layero){
+                      document.getElementById("COPY").select();
+                      document.execCommand("Copy");
+                      layer.close(index);
+                      layer.msg('复制成功,稍后您可以在我的分享中浏览和管理已建立的分享',{icon:1,time:2000});
+                    }
+                  })
+                }
+              })
+            }
+          });
+          var checkData = checkStatus.data;
+          addFilesToLink(ID,checkData,0,0);
+          break;
+        case "share":
+          break;
+        case "delete":
+          break;
+        default:
+          break;
+      }
+    })
+  });
+</script>
+</body>
+</html>

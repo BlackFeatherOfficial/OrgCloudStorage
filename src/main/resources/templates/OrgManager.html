@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" >
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>企业共享分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+  <script th:src="@{/../static/Mtils.min.js}"></script>
+  <script th:src="@{/../static/layui.js}"></script>
+  <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+
+  <script type="text/html" id="headToolBar">
+    <div class="demoTable">
+      搜索职员名：
+      <div class="layui-inline">
+        <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+      </div>
+      <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+      <button class="layui-btn layui-btn-sm" lay-event="creat">建立分组</button>
+      <button class="layui-btn layui-btn-sm" lay-event="invent">邀请人员</button>
+      <button class="layui-btn layui-btn-sm" lay-event="move">移动人员</button>
+      <button class="layui-btn layui-btn-sm" lay-event="edit">编辑人员</button>
+      <button class="layui-btn layui-btn-sm" lay-event="delete">请出人员 / 删除部门</button>
+
+    </div>
+  </script>
+  <script>
+    function getQueryVariable(variable)
+    {
+      var query = window.location.search.substring(1);
+      var vars = query.split("&");
+      for (var i=0;i<vars.length;i++) {
+        var pair = vars[i].split("=");
+        if(pair[0] == variable){return pair[1];}
+      }
+      return false;
+    }
+
+    function OrgManagerInit(){
+      let OrgID = getQueryVariable("OrgID");
+      document.getElementById("homeLink").setAttribute("href","/OrgManager?belongLayer=0&belongOrder=0");
+      if (("0"==getQueryVariable("belongLayer")&"0"==getQueryVariable("belongOrder")))
+        document.getElementById("backLink").style.display="none";
+    }
+
+    layui.use('table', function(){
+
+      var table = layui.table;
+      //加载table实例
+      table.render({
+        elem:"#userTable",//绑定ID属性
+        url: "/userList_json?belongLayer="+getQueryVariable("belongLayer")+"&belongOrder="+getQueryVariable("belongOrder"),//不要写成url， data的格式，会报错！
+        cols: [
+          [
+            {field:'checkbox',type:'checkbox'},
+            {field:'remark',title:'职员名',sort:true},
+            {field:'userType',title:'职位'},
+            {field:'manager',title:'当前目录及子目录管理者'},
+          ]
+        ],
+        page:true,
+        toolbar:'#headToolBar',
+      });
+
+      table.on('toolbar(userTable)',function (obj){
+
+        //获取表格对象
+        var checkStatus = table.checkStatus(obj.config.id);
+        //获取事件名
+        var eventName = obj.event;
+        switch (eventName){
+          case "search":
+            break;
+          case "creat":
+            layer.open({
+              title: "请输入部门名称",
+              content: "departmentName",
+              area: ['500px', '300px'],
+              closeBtn: 0,
+              type: 2,
+              btn: ['确定','取消'],
+              yes:function (index,layero){
+
+                var res = window["layui-layer-iframe" + index].callBackData();
+                $.ajax({
+                  url:"addGroupNote",
+                  data:{
+                    OrgID:getQueryVariable("OrgID"),
+                    belongLayer:getQueryVariable("belongLayer"),
+                    belongOrder:getQueryVariable("belongOrder"),
+                    remark:res
+                },
+                })
+
+                layer.close(index);
+                window.location.reload(true);
+              }
+            })
+            break;
+          case "invent":
+            layer.open({
+              title: "请输入被邀请人ID",
+              content: "inventUser",
+              area: ['500px', '300px'],
+              closeBtn: 0,
+              type: 2,
+              btn: ['确定','取消'],
+              yes:function (index,layero){
+
+                var res = window["layui-layer-iframe" + index].callBackData();
+
+                $.ajax({
+                  url:"sql",
+                  data:{
+                    id:res
+                  },
+                  success:function (data,status){
+                    if(data != ""){
+                      if (data.belonging != null){
+                        layer.msg('该用户已进入其他企业，请确认用户ID',{icon:2,time:2000});
+                      }
+                      else{
+                        let msgID =Mtils.security.hex_md5((getQueryVariable("OrgID")+(new Date()).valueOf()+res)%256);
+                        // 在这里发送云私信!
+
+                        if (data.email == null)
+                          layer.msg('对方未填写Email，已发送云盘私信通知',{icon:1,time:2000});
+                        else
+                        {
+                          let userName;
+                          userName = data.netName == null?data.userName:data.netName;
+                          console.log(userName);
+                          $.ajax({
+                            url:"sendImage",
+                            data:{
+                              receiver:data.email,
+                              subject:"黑羽Official通知",
+                              context:"尊敬的用户"+userName+"您好,您在我司下属软件：鲸羽™企业云盘 收到了企业（OrgID="+getQueryVariable("OrgID")+")的邀请，您可以点击<a href='http://localhost:8080/Msg?ID='"+msgID+">这里</a>来确认该邀请。" +
+                                      "非局域网用户请点击<a href='http://h2b6305400.qicp.vip/Msg?ID='"+msgID+">这里</a>在公网确认该邀请"
+                            },
+                            success:function (data_mail,status_mail){
+                              if (data_mail == "success")
+                                layer.msg('已发出云盘私信和邮件通知，等待对方确认',{icon:1,time:2000});
+                            }
+                          })
+                        }
+
+                        $.ajax({
+                          url:"sendOrgInvent",
+                          data:{
+                            receiver:res,
+                            msgID:msgID,
+                            layer:getQueryVariable("belongLayer"),
+                            order:getQueryVariable("belongOrder"),
+                          }
+                        })
+                        layer.close(index);
+                      }
+                    }
+                    else
+                      layer.msg('未查询到有该用户，请确认用户ID',{icon:5,time:2000});
+                  }
+                })
+              }
+            })
+              break;
+          case "move":
+            break;
+          case "edit":
+            break;
+          case "delete":
+
+            for (let i=0;i<checkStatus.data.length;i++){
+
+              if (checkStatus.data[i].userOrNot == 0){
+                $.ajax({
+                  url:"userList_json",
+                  data:{
+                    belongLayer:checkStatus.data[i].layer,
+                    belongOrder:checkStatus.data[i].order,
+                  },
+                  success:function (data,status){
+                    if (data.count != 0){
+                      layer.msg('有包含下级元素的部门，已跳过，请手动确认',{icon:5,time:2000});
+                    }
+                    else {
+                      deleteUser(checkStatus.data[i].layer,checkStatus.data[i].order);
+                    }
+                  }
+                })
+              }
+              else {
+                deleteUser(checkStatus.data[i].layer,checkStatus.data[i].order);
+              }
+            }
+            location.reload();
+            break;
+          default:
+            break;
+        }
+      })
+    });
+function deleteUser(layer,order){
+  $.ajax({
+    url:"delOrgUser",
+    data:{
+      layer:layer,
+      order:order
+    }
+  })
+}
+  </script>
+</head>
+<body onload="OrgManagerInit()">
+
+<!--导航-->
+<div id="pathNavigation" style="position:absolute; top: 0%;height: 3%;width: 100%; background: #ffffff">
+  <span id="navigationBar" class="layui-breadcrumb"> <a id="homeLink" href= "">主页</a> <a id="backLink" onclick="goBack();">返回上一级&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp</a> </span>
+
+</div>
+<div style="position:absolute; top: 3%;height: 97%;width: 100%; background: #ffffff">
+<!--表格-->
+<table id="userTable" lay-filter="userTable" >
+</table>
+</div>
+</body>
+
+
+<script>
+  //设置导航参数
+  function addPath(fileName,pathLayer,pathOrder){
+
+    sessionStorage.setItem("fileName"+getQueryVariable("belongLayer"),fileName);
+    sessionStorage.setItem("pathLayer"+getQueryVariable("belongLayer"),pathLayer);
+    sessionStorage.setItem("pathOrder"+getQueryVariable("belongLayer"),pathOrder);
+  }
+  function initParam(){
+    document.getElementById("belongLayer").value=getQueryVariable("belongLayer");
+    document.getElementById("belongOrder").value=getQueryVariable("belongOrder");
+    document.getElementById("userName").value=getQueryVariable("userName");
+  }
+  function goBack(){
+    window.history.back();
+  }
+
+  function newFolder(){
+    document.getElementById("FolderName").style.display = "";
+    document.getElementById("confirmNewFolderButton").style.display = "";
+    document.getElementById("cancelNewFolderButton").style.display = "";
+    document.getElementById("newFolderButton").style.display = "none";
+  }
+
+  function cancelNewFolder(){
+    document.getElementById("FolderName").style.display = "none";
+    document.getElementById("confirmNewFolderButton").style.display = "none";
+    document.getElementById("cancelNewFolderButton").style.display = "none";
+    document.getElementById("newFolderButton").style.display = "";
+  }
+
+  function confirmNewFolder(){
+    if (document.getElementById("FolderName").value.indexOf("<") != -1){
+      alert("请勿将< >作为组织名");
+      return;
+    }
+    $.ajax({
+      url:"queryMaxOrder",
+      data:{userName: getQueryVariable("userName"),layer:(parseInt(getQueryVariable("belongLayer"))+1)},
+      success:function (data,status){
+        $.ajax({
+          url:"addFolder",
+          data:{userName:getQueryVariable("userName"),
+            layer: (parseInt(getQueryVariable("belongLayer"))+1),
+            order:(data+1),
+            belongLayer: getQueryVariable("belongLayer"),
+            belongOrder: getQueryVariable("belongOrder"),
+            remark: document.getElementById("FolderName").value},
+          success:function (data2,status){
+            window.location.reload(true);
+          }
+        })
+      }
+    })
+  }
+</script>
+</html>

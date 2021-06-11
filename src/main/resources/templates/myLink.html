@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>全部文件分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+</head>
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+<script>
+  function getQueryVariable(variable)
+  {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+    return false;
+  }
+
+  function recycleInit(){
+    $.ajax({
+      url: "/linkListByUser_json",
+      success: function (data,status){
+        if(data.count=="0"){
+          document.getElementById("noFile").style.display = "";
+          document.getElementById("haveFile").style.display = "none";
+        }
+        else {
+          document.getElementById("haveFile").style.display = "";
+          document.getElementById("noFile").style.display = "none";
+        }
+      }
+    })
+  }
+
+</script>
+<script>
+
+</script>
+
+<body onload="recycleInit()">
+<!--顶部路径导航菜单-->
+
+<!--无文件时，显示以下界面-->
+<div th:id="noFile" style="position: absolute;top: 0%;height: 100%;width: 100%;display: none">
+  <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 30%">
+    <hr>
+    <i style="position: absolute;left: 39%;font-size: 30px ;" class="layui-icon"> &#xe60c;您目前没有分享链接&#xe60c;</i>
+  </div>
+</div >
+
+
+<!--有文件时，显示以下界面-->
+<div  th:id="haveFile" style="position: absolute;top: 0%;height: 100%;width: 100%;display: none">
+
+
+  <table id="fileTable" lay-filter="mainTable">
+  </table>
+  <!--<span id="userNameQuery" th:value="${session.loginUser.userName}" th:text="${session.loginUser.userName}">survey</span><span>欢迎您，您现在看到的是全部文件页面</span>-->
+
+</div>
+
+
+
+<script th:src="@{/../static/layui.js}"></script>
+
+<script type="text/html" id="headToolBar">
+  <div class="demoTable">
+    搜索备注名：
+    <div class="layui-inline">
+      <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+    </div>
+    <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+    <button  class="layui-btn layui-btn-sm" lay-event="delete">删除</button>
+
+  </div>
+</script>
+
+<script th:src="@{/../static/Mtils.min.js}"></script>
+<script>
+
+  layui.use('table', function(){
+    var table = layui.table;
+    //加载table实例
+    table.render({
+      elem:"#fileTable",//绑定ID属性
+      url: "/linkListByUser_json",//不要写成url， data的格式，会报错！
+      cols: [
+        [
+          {field:'checkbox',type:'checkbox'},
+          {field:'reMark',title:'链接备注名',sort:true},
+          {field:'password',title:'链接密码',sort:true},
+          {field:'deadTime',title:'过期时间',sort:true},
+          {field:'id',title:'链接地址',sort:true},
+        ]
+      ],
+      page:true,
+      toolbar:'#headToolBar',
+    });
+    table.on('toolbar(mainTable)',function (obj){
+
+      //获取表格对象
+      var checkStatus = table.checkStatus(obj.config.id);
+      //获取事件名
+      var eventName = obj.event;
+      switch (eventName){
+        case "delete":
+
+          for (let i = 0; i < checkStatus.data.length; i++) {
+            deleteLink(checkStatus.data[i]);
+          }
+          layer.msg('删除完毕', {icon: 5, time: 800});
+          location.reload();
+          break;
+        default:
+          break;
+      }
+    })
+  });
+
+  function deleteLink(checkStatus){
+    $.ajax({
+      url:"deleteLink",
+      data:{
+        linkID:checkStatus.id
+      }
+    })
+  }
+</script>
+</body>
+</html>

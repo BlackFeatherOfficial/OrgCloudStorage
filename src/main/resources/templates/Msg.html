@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>全部文件分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+</head>
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+<script>
+  function getQueryVariable(variable)
+  {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+    return false;
+  }
+
+  function recycleInit(){
+    let type = getQueryVariable("type");
+    if (!type)
+      type="receiver"
+    $.ajax({
+      url: "/Msg_json",//不要写成url， data的格式，会报错！
+      data: {
+        type:type
+       },
+      success: function (data,status){
+        if(data.count==0){
+          document.getElementById("noFile").style.display = "";
+          document.getElementById("haveFile").style.display = "none";
+        }
+        else {
+          document.getElementById("haveFile").style.display = "";
+          document.getElementById("noFile").style.display = "none";
+        }
+      }
+    })
+  }
+
+</script>
+<script>
+function gotoSender(){
+  window.location.replace("http://localhost:8080/Msg?type=sender")
+}
+
+function gotoReceiver(){
+  window.location.replace("http://localhost:8080/Msg?type=receiver");
+}
+
+</script>
+
+<body onload="recycleInit()">
+<!--顶部路径导航菜单-->
+<div>
+  <button class="layui-btn" onclick="gotoSender()">查看发送的邮件</button>
+  <button class="layui-btn" onclick="gotoReceiver()">接收到的邮件</button>
+</div>
+<!--无文件时，显示以下界面-->
+<div th:id="noFile" style="position: absolute;top: 5%;height: 95%;width: 100%;display: none;text-align: center">
+  <div style="height: 100%;width: 100%" ><img src="static/images/NoFile.png" style="position:absolute; left: 30%">
+    <hr>
+    <i style="position: absolute;left: 40%;font-size: 30px ;" class="layui-icon"> &#xe60c;您目前没有收到邮件&#xe60c;<br></i>
+  </div>
+</div >
+
+
+<!--有文件时，显示以下界面-->
+<div  th:id="haveFile" style="position: absolute;top: 5%;height: 95%;width: 100%;display: none">
+
+  <table id="msgTable" lay-filter="mainTable">
+  </table>
+  <!--<span id="userNameQuery" th:value="${session.loginUser.userName}" th:text="${session.loginUser.userName}">survey</span><span>欢迎您，您现在看到的是全部文件页面</span>-->
+
+</div>
+
+<script th:src="@{/../static/layui.js}"></script>
+
+<script type="text/html" id="headToolBar">
+  <div class="demoTable">
+    搜索消息内容：
+    <div class="layui-inline">
+      <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+    </div>
+    <button  class="layui-btn layui-btn-sm" lay-event="search">搜索</button>
+  </div>
+</script>
+
+<script th:src="@{/../static/Mtils.min.js}"></script>
+<script>
+
+  layui.use('table', function(){
+    let type = getQueryVariable("type");
+    if (!type)
+      type="receiver"
+    var table = layui.table;
+    //加载table实例
+    table.render({
+      elem:"#msgTable",//绑定ID属性
+      url: "/Msg_json?&type="+type,//不要写成url， data的格式，会报错！
+      cols: [
+        [
+          {field:'type',title:'消息类型',sort:true},
+          {field:'msg',title:'消息内容',sort:true},
+          {field:'sender',title:'发件人',sort:true},
+          {field:'receiver',title:'收件人',sort:true},
+          {field:'sendTime',title:'发送时间',sort:true},
+          {field:'readMark',title:'是否已读',sort:true},
+          {field:'confirm',title:'是否确认',sort:true},
+        ]
+      ],
+      page:true,
+      toolbar:'#headToolBar',
+
+    });
+    table.on('toolbar(mainTable)',function (obj){
+
+      //获取表格对象
+      var checkStatus = table.checkStatus(obj.config.id);
+      //获取事件名
+      var eventName = obj.event;
+      switch (eventName){
+        case "cancelDelete":
+          for (let i = 0; i < checkStatus.data.length; i++) {
+            cancelDelete(checkStatus.data[i]);
+          }
+          layer.open({
+            title: "请点击刷新页面！",
+            content: "<span>还原成功</span>",
+            area: ['300px', '250px'],
+            type: 0,
+            btn: ['确定'],
+            yes:function (index2,){
+              layer.close(index2);
+              location.reload();
+            }
+          })
+          break;
+        default:
+          break;
+      }
+    })
+  });
+
+  function cancelDelete(checkStatus){
+    $.ajax({
+      url:"checkFileDelete",
+      data:{
+        layer: checkStatus.belongLayer,
+        order: checkStatus.belongOrder
+      },
+      success:function (data,status){
+
+        if (data[0] != null && data[0].deleteMark == 0){
+          console.log("已经找到存在的父文件夹"+data[0].deleteMark)
+          return;
+        }
+        else
+          cancelDelete(data[0]);
+      }
+    })
+
+    $.ajax({
+      url:"cancelDeleteFile",
+      data:{
+        layer:checkStatus.layer,
+        order:checkStatus.order
+      },
+    })
+
+  }
+</script>
+</body>
+</html>

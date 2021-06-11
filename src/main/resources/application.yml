@@ -1,0 +1,48 @@
+spring:
+  mail:
+    host: smtp.qq.com
+    username: 2410600421@qq.com
+    password: uwmwvtsvptdueccf
+    default-encoding: UTF-8
+
+  datasource:
+    username: root
+    password: root
+    url: jdbc:mysql://localhost:3306/netdesk
+    driver-class-name: com.mysql.jdbc.Driver
+    druid:
+      filters: stat,wall
+
+      stat-view-servlet:
+        enabled: true
+        login-password:
+        login-username:
+        reset-enable: false
+        allow:
+
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+      filter:
+        stat:
+          log-slow-sql: true
+          slow-sql-millis: 1000
+        wall:
+          config:
+            drop-table-allow: false
+  mvc:
+    static-path-pattern: /static/**
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 2048MB
+  jdbc:
+    template:
+      query-timeout: 5
+hiddenmethod:
+  filter:
+    enabled: true
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true

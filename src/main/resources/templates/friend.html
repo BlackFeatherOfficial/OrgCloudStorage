@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en"  xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" >
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>企业共享分页</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/../static/css/layui.css}"/>
+  <script th:src="@{/../static/Mtils.min.js}"></script>
+  <script th:src="@{/../static/layui.js}"></script>
+  <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+
+</head>
+<body>
+
+<div style="position:absolute;width: 100%;height: 100%;background-color: #ef4141">
+
+
+  <div class="layui-side-scroll" id="chatted">
+    <!-- 左侧正在聊天的好友 -->
+    <ul class="layui-nav layui-nav-tree" >
+      <li class="layui-nav-item layui-nav-itemed layui-bg-cyan">
+      <li th:class="layui-nav-item" onclick="gotoSurvey();"><a href="#">小王</a></li>
+      <li th:class="layui-nav-item" ><a onclick="gotoAllFile();" href="#">小李</a></li>
+      <li th:class="layui-nav-item" onclick="gotoShare();"><a href="#">张三<span th:class="layui-badge">6</span></a></li>
+    </ul>
+  </div>
+<!--  //中央聊天窗口-->
+  <div style="left: 15%;position:absolute;top: 0px;background: #FFFF00;width: 70%;height: 100%;text-align: center">
+    <div style="position:absolute;background: #00F7DE;width: 90%;height: 60%;left: 5%;top: 2%;">
+      <span>聊天区</span>
+    </div>
+    <div style="position:absolute;background: #9fdc71;width: 90%;height: 23%;left: 5%;top: 63%;">
+      <input>
+      <span>文档输入</span>
+    </div>
+    <div style="position:absolute;background: #1d4003;width: 90%;height: 11%;left: 5%;top: 87%;">
+      <span>功能菜单区域</span>
+    </div>
+    <div>
+
+    </div>
+  </div>
+  <div style="position:absolute; top: 0px;right:  0px;width: 15%;height: 100%;background: #5454ee">
+    <span>
+      好友列表区域
+    </span>
+    <div style="position:absolute; bottom: 10px;width: 90%;left: 5%;background: #b2b2b2;height: 10%;">
+      <span>
+        <button class="layui-btn" onclick="addFriend()">添加好友</button>
+        好友功能按钮区域
+      </span>
+    </div>
+  </div>
+ 
+</div>
+</body>
+<script>
+  function addFriend(){
+    layer.open({
+      title: "输入好友ID",
+      content: "inputFriendID",
+      area: ['500px', '300px'],
+      closeBtn: 0,
+      type: 2,
+      btn: ['确定'],
+      yes:function (index,layero){
+        var res = window["layui-layer-iframe" + index].callBackData();
+        $.ajax({
+          url:"sqlCheck",
+          data:{
+          id:res
+          },
+          success:function (data,status){
+            if (data=="")
+              layer.msg('无此用户', {icon: 5, time: 800});
+            else if(data.id == -1)
+              layer.msg('不要添加自己为好友', {icon: 5, time: 800});
+            else
+            {
+
+
+
+              if (data.email != null || data.email != ""){
+
+                layer.msg('已发出私信和邮件通知', {icon: 1, time: 800});
+              }
+              else {
+
+                layer.msg('已发出私信通知', {icon: 1, time: 800});
+              }
+
+              layer.close(index);
+            }
+
+          }
+        })
+
+      }
+    })
+  }
+</script>
+</html>
